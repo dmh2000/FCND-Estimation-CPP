@@ -45,8 +45,8 @@ def noise_data(f_in, f_out):
 
 
 # uncomment these to accumulate more data from additional runs
-#noise_data("../config/log/Graph1.txt", "gps_data.txt")
-#noise_data("../config/log/Graph2.txt", "acc_data.txt")
+noise_data("../config/log/Graph1.txt", "gps_data.txt")
+noise_data("../config/log/Graph2.txt", "acc_data.txt")
 
 # compute GPS noise stats
 noise_stats("GPS","gps_data.txt")
@@ -64,5 +64,5 @@ ACC
 ============================
 1694
 DT       0.004999878322504429 200.00486721826903
-ACC mean -0.01661793447461629 stddev 0.4882904539036071
+ACC mean -0.01661793447461629 stddev 0.4913677662625582
 """
