@@ -3,8 +3,18 @@
 #include "Utility/SimpleConfig.h"
 #include "Utility/StringUtils.h"
 #include "Math/Quaternion.h"
-
+#include <cassert>
 using namespace SLR;
+
+// EKF state vector indices
+const int EKF_STATE_X       = 0;
+const int EKF_STATE_Y       = 1;
+const int EKF_STATE_Z       = 2;
+const int EKF_STATE_X_DOT   = 3;
+const int EKF_STATE_Y_DOT   = 4;
+const int EKF_STATE_Z_DOT   = 5;
+const int EKF_STATE_YAW     = 6;
+
 
 const int QuadEstimatorEKF::QUAD_EKF_NUM_STATES;
 
@@ -101,11 +111,11 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
 	Quaternion<float> q_t = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, yaw);
 
 	// integrate with the body rates
-	Quaternion<float> q_bar = q_t.IntegrateBodyRate(gyro, this->dtIMU);
+	Quaternion<float> q_bar = q_t.IntegrateBodyRate(gyro, dtIMU);
 
 	// convert back to euler
 	V3D rpy = q_bar.ToEulerRPY();
-
+	
 	// forward the values
 	predictedRoll  = static_cast<float>(rpy[0]);
 	predictedPitch = static_cast<float>(rpy[1]);
@@ -176,7 +186,35 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
 
 	////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+	V3F v = V3F(curState[3],curState[4],curState[5]);
+	V3F p = V3F(curState[0],curState[1],curState[2]);
+	V3F g = V3F(0.0f, 0.0f, 9.81f);
+	V3F euler_dot;
+	V3F linear_acc;
+	float alpha_p = 0.9f;
+	float alpha_v = 0.9f;
 
+	// get euler derivatives (not used)
+	euler_dot = attitude.Rotate_BtoI(gyro);
+
+	// get linear acceleration in inertial frame
+	// and remove the gravity vector
+	linear_acc = attitude.Rotate_BtoI(accel) - g;
+
+	// integrate to get velocities
+	v += linear_acc * dt;
+
+	// integrate to get position
+	p += v * dt;
+	
+	predictedState[EKF_STATE_X]       = p[0];
+	predictedState[EKF_STATE_Y]       = p[1]; 
+	predictedState[EKF_STATE_Z]       = p[2]; 
+	predictedState[EKF_STATE_X_DOT]   = v[0]; 
+	predictedState[EKF_STATE_Y_DOT]   = v[1]; 
+	predictedState[EKF_STATE_Z_DOT]   = v[2]; 
+	predictedState[6] = curState[EKF_STATE_YAW]; 
+	
 	/////////////////////////////// END STUDENT CODE ////////////////////////////
 
 	return predictedState;
@@ -202,7 +240,25 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
 	//   that your calculations are reasonable
 
 	////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+	float c_phi = cosf(roll);
+	float s_phi = sinf(roll);
+	float c_tht = cosf(pitch);
+	float s_tht = sinf(pitch);
+	float c_psi = cosf(yaw);
+	float s_psi = sinf(yaw);
 
+	// from section 7.2 Transition Model of Estimation for Quadrotors
+	RbgPrime(0, 0) =         -c_tht * s_psi;
+	RbgPrime(0, 1) = -s_phi * s_tht * s_psi - c_phi * c_psi;
+	RbgPrime(0, 2) = -c_phi * s_tht * s_psi + s_phi * c_psi;
+
+	RbgPrime(1, 0) =         c_tht * c_psi;
+	RbgPrime(1, 1) = s_phi * s_tht * c_psi - c_phi * s_psi;
+	RbgPrime(1, 2) = c_phi * s_tht * c_psi + s_phi * s_psi;
+
+	RbgPrime(2, 0) = 0;
+	RbgPrime(2, 1) = 0;
+	RbgPrime(2, 2) = 0;
 
 	/////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -248,7 +304,41 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
 	gPrime.setIdentity();
 
 	////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+	// control inputs are the measured accelerations in body frame
+	// ref: Lesson 4.5 : EKF Tradeoffs 2 - Control
+	// ref: Estimation_For_Quadrotors
+	// use VectorXf so Eigen matrix muliply works
+	assert(RbgPrime.size() == 9);
+	assert(gPrime.size() == 49);
 
+	
+	// create matrix from Rbg' and inputs for update to g'
+
+	// u is control inputs : body accelerations
+	Eigen::Vector3f u(3);
+	u[0] = accel.x;
+	u[1] = accel.y;
+	u[2] = accel.z - 9.81f;
+
+	// compute derivatives RgbPrime * (u * dt)
+	Eigen::MatrixXf r;
+	r = RbgPrime * (u * dt);
+	assert(r.size() == 3);
+	// initialize gPrime Jacobian
+
+	// these cells are delta T
+	gPrime(0, 3) = dt;
+	gPrime(1, 4) = dt;
+	gPrime(2, 5) = dt;
+
+	// these cells are the derivaives from 'r'
+	gPrime(3, 6) = r(0);
+	gPrime(4, 6) = r(1);
+	gPrime(5, 6) = r(2);
+
+	// compute new covariance 
+	ekfCov = (gPrime * (ekfCov * gPrime.transpose())) + Q;
+	assert(ekfCov.size() == 49);
 
 	/////////////////////////////// END STUDENT CODE ////////////////////////////
 
