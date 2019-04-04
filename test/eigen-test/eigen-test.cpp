@@ -1,6 +1,8 @@
 #include <iostream>
 #include <Eigen/Dense>
 using namespace Eigen;
+
+// a simple program i used to try out different Eigen features
 int main()
 {
 	Matrix3f x(3,3);
