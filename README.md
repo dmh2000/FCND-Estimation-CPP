@@ -129,8 +129,8 @@ out from looking at the Eigen documentation.
 
 
 ### References
-'Estimation For Quadrotors'
-'Feasiblity of Motion Primitives for Choreographed Quadrocopter Flight'
-'Feed-Forward Parameter Identification for Precise Periodic Quadrocopter Motions'
+ - 'Estimation For Quadrotors'
+ - 'Feasiblity of Motion Primitives for Choreographed Quadrocopter Flight'
+ - 'Feed-Forward Parameter Identification for Precise Periodic Quadrocopter Motions'
 
 
