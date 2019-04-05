@@ -452,30 +452,27 @@ float QuadControl::YawControl(float yawCmd, float yaw)
 
 	float yawRateCmd = 0;
 
-#define MY_ESTIMATION_SOLUTION
 
-#if defined(MY_ESTIMATION_SOLUTION)
+
+	////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 	// THIS IS MY FIX FOR THE ESTIMATION LESSON
-	// I LOOKED AT THE SOLUTION FOR THE CONTROLLER IN THE ESTIMATION CODE
-	// AND I SAW MY MISTAKE ON WHERE TO LIMIT THE YAW TERMS
+	// It properly limits the yaw error to += PI
 	float yaw_error;
 	yaw_error = AngleNormF(yawCmd - yaw);
 	yawRateCmd = kpYaw * yaw_error;
 
-# else
-	////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-	// THIS IS MY VERSION FROM THE CONTROL LESSON
+	// THIS IS The VERSION FROM THE CONTROL LESSON
 	// THIS VERSION DID NOT WORK WITH THE ESTIMATION. It passed the tests
 	// in the Control lesson but it was obvious when I ran the  Estimation
-	// Scenario_11 that there was a yaw rate problem. I was not constraining it properly
+	// Scenario_11 that there was a yaw rate problem. During debug
+	// I saw the that yawRateCmd was exceeding +=PI. 
+	// I was not constraining the yaw error properly
 	// limit yaw to 2PI
-	yawCmd = fmod(yawCmd, 2.0f * F_PI);
-
-	yawCmd = AngleNormF(yawCmd);
-	yaw = AngleNormF(yaw);
-	yawRateCmd = kpYaw * (yawCmd - yaw);
+	//yawCmd = fmod(yawCmd, 2.0f * F_PI);
+	//yawCmd = AngleNormF(yawCmd);
+	//yaw = AngleNormF(yaw);
+	//yawRateCmd = kpYaw * (yawCmd - yaw);
 	/////////////////////////////// END STUDENT CODE ////////////////////////////
-#endif
 
 	//////////////////////////////// END SOLUTION ///////////////////////////////
 	return yawRateCmd;

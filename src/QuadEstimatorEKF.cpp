@@ -191,9 +191,7 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
 	V3F g = V3F(0.0f, 0.0f, 9.81f);
 	V3F euler_dot;
 	V3F linear_acc;
-	float alpha_p = 0.9f;
-	float alpha_v = 0.9f;
-
+	
 	// get euler derivatives (not used)
 	euler_dot = attitude.Rotate_BtoI(gyro);
 
